@@ -106,7 +106,7 @@ if __name__ == '__main__':
   if args.simulation:
     # print values to screen
     for i in range(len(data[args.simulation][1])):
-      print("%f\t%f" % (data[args.simulation][1][i],data[args.simulation][2][i]))
+      print("%f\t%e" % (data[args.simulation][1][i],data[args.simulation][2][i]))
     # plot
     plt.plot(data[args.simulation][1],data[args.simulation][2])
     plt.xlabel(data[args.simulation][0][0].replace("_","\_"))
