@@ -62,7 +62,7 @@ def parse_log(file, colx, coly, multdt):
       while True:
         line = f.readline()
         
-        if "Loop" in line:
+        if "Loop" in line or "WARNING" in line:
           break
 
         if not line:
