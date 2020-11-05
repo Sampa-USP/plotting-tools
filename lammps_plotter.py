@@ -41,7 +41,10 @@ def parse_log(file, colx, coly, multdt):
         dt = float(line.split(":")[1])
         continue
       elif line.strip().startswith("timestep"):
-        dt = float(line.split()[1])
+        try:
+          dt = float(line.split()[1])
+        except:
+          pass
         continue
 
       if not line.strip().startswith("Step"):
@@ -71,11 +74,17 @@ def parse_log(file, colx, coly, multdt):
           sim += 1
           break
 
-        if multdt and dt:
-          xaxis.append(dt*float(line.split()[colx-1]))
-        else:
-          xaxis.append(float(line.split()[colx-1]))
-        yaxis.append(float(line.split()[coly-1]))
+        try:
+          if multdt and dt:
+            xaxis.append(dt*float(line.split()[colx-1]))
+          else:
+            xaxis.append(float(line.split()[colx-1]))
+          yaxis.append(float(line.split()[coly-1]))
+        except:
+          print("Could not get columns %d and %d from simulation %d" % (colx, coly, sim))
+          print("Your simulation may have ended with an error")
+          break
+
 
       data[sim] = [(headx,heady),xaxis,yaxis,dt]
       sim += 1
