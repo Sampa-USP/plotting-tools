@@ -54,14 +54,16 @@ def parse_log(file, colx, coly, multdt):
       headers = line
       try:
         headx = headers.split()[colx-1]
-        heady = headers.split()[coly-1]
+        heady = []
+        for h in coly:
+          heady.append(headers.split()[h-1])
       except:
         # these header are not available
         print("Columns %d and %d are not valid for simulation %d" % (colx,coly,sim))
         sim += 1
         continue
       xaxis = []
-      yaxis = []
+      yaxis = {}
       while True:
         line = f.readline()
         
@@ -79,9 +81,13 @@ def parse_log(file, colx, coly, multdt):
             xaxis.append(dt*float(line.split()[colx-1]))
           else:
             xaxis.append(float(line.split()[colx-1]))
-          yaxis.append(float(line.split()[coly-1]))
+          for i, h in enumerate(coly):
+            try:
+              yaxis[i].append(float(line.split()[h-1]))
+            except:
+              yaxis[i] = [float(line.split()[h-1])]
         except:
-          print("Could not get columns %d and %d from simulation %d" % (colx, coly, sim))
+          print("Could not get columns {} and {} from simulation {}".format(colx, coly, sim))
           print("Your simulation may have ended with an error")
           break
 
@@ -95,7 +101,7 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description="Receives a LAMMPS log to plot one column vs another.")
   parser.add_argument("logfile", type=extant_file, help="path to the LAMMPS output file")
   parser.add_argument("columnx", type=int, help="column of the x axis (starting from 1)")
-  parser.add_argument("columny", type=int, help="column of the y axis (starting from 1)")
+  parser.add_argument("columny", type=int, nargs="+", help="columns to plot in the y axis (starting from 1) - you can pass more than one column")
   parser.add_argument("--simulation", type=int, help="plot data of a single simulation only")
   parser.add_argument("--ignore-optimization", action="store_true", help="do not plot simulations that does not have a timestep defined")
   parser.add_argument("--multx-timestep", action="store_true", help="multiply the x axis by the time step (to have time as the axis, for example)")
@@ -116,63 +122,121 @@ if __name__ == '__main__':
     # print values to screen
     for i in range(len(data[args.simulation][1])):
       try:
-        print("%f\t%e" % (data[args.simulation][1][i],data[args.simulation][2][i]))
+        line = "%f" % data[args.simulation][1][i]
+        for j in range(len(args.columny)):
+          line += "\t%e" % data[args.simulation][2][j][i]
+        print(line)
       except:
         break
     # plot
-    plt.plot(data[args.simulation][1],data[args.simulation][2])
+    for i in range(len(args.columny)):
+      plt.plot(data[args.simulation][1],data[args.simulation][2][i],label=data[args.simulation][0][1][i].replace("_","\_"))
     plt.xlabel(data[args.simulation][0][0].replace("_","\_"))
-    plt.ylabel(data[args.simulation][0][1].replace("_","\_"))
-    plt.savefig("plotter_"+str(args.columnx)+"_"+str(args.columny)+"."+args.output_format, bbox_inches="tight")
+    plt.legend(frameon=False)
+    fname = "plotter_"+str(args.columnx)
+    for c in args.columny:
+      fname += "_"+str(c)
+    plt.savefig(fname+"."+args.output_format, bbox_inches="tight")
   else:
     # print data of all simulations
     if args.multx_timestep:
       optx = []
-      opty = []
+      opty = {}
       simx = []
-      simy = []
+      simy = {}
+      optly = {}
+      simly = {}
       for sim in data:
-        if not data[sim][3]:
+        if not data[sim][3] and not args.ignore_optimization:
           optlx = data[sim][0][0]
-          optly = data[sim][0][1]
+          for i in range(len(args.columny)):
+            optly[i] = data[sim][0][1][i]
           optx += data[sim][1]
-          opty += data[sim][2]
+          for i in range(len(args.columny)):
+            opty[i] = data[sim][2][i]
         else:
           simlx = data[sim][0][0]
-          simly = data[sim][0][1]
+          for i in range(len(args.columny)):
+            simly[i] = data[sim][0][1][i]
           simx += data[sim][1]
-          simy += data[sim][2]
+          for i in range(len(args.columny)):
+            simy[i] = data[sim][2][i]
 
      # plot optimization data
       if args.ignore_optimization:
         pass
       else:
-        plt.plot(optx,opty)
+        # print optimization values to screen
+        for i in range(len(optx)):
+          try:
+            line = "%f" % optx[i]
+            for j in range(len(args.columny)):
+              line += "\t%e" % opty[j][i]
+            print(line)
+          except:
+            break
+
+        for i in range(len(args.columny)):
+          plt.plot(optx,opty[i],label=optly[i].replace("_","\_"))
         plt.xlabel(optlx.replace("_","\_"))
-        plt.ylabel(optly.replace("_","\_"))
-        plt.savefig("plotter_opt_"+str(args.columnx)+"_"+str(args.columny)+"."+args.output_format, bbox_inches="tight")
+        plt.legend(frameon=False)
+        fname = "plotter_"+str(args.columnx)
+        for c in args.columny:
+          fname += "_"+str(c)
+        plt.savefig(fname+"."+args.output_format, bbox_inches="tight")
         plt.clf()
 
+      # print sim values to screen
+      for i in range(len(simx)):
+        try:
+          line = "%f" % simx[i]
+          for j in range(len(args.columny)):
+            line += "\t%e" % simy[j][i]
+          print(line)
+        except:
+          break
+
       # plot all simulation data
-      plt.plot(simx,simy)
+      for i in range(len(args.columny)):
+        plt.plot(simx,simy[i],label=simly[i].replace("_","\_"))
       plt.xlabel(simlx.replace("_","\_"))
-      plt.ylabel(simly.replace("_","\_"))
-      plt.savefig("plotter_"+str(args.columnx)+"_"+str(args.columny)+"."+args.output_format, bbox_inches="tight")
+      plt.legend(frameon=False)
+      fname = "plotter_"+str(args.columnx)
+      for c in args.columny:
+        fname += "_"+str(c)
+      plt.savefig(fname+"."+args.output_format, bbox_inches="tight")
     else:
       simx = []
-      simy = []
+      simy = {}
+      simly = {}
       for sim in data:
-        if args.ignore_optimization and not data[sim][3]:
+        if args.ignore_optimization or not data[sim][3]:
           continue
 
         simlx = data[sim][0][0]
-        simly = data[sim][0][1]
+        for i in range(len(args.columny)):
+          simly[i] = data[sim][0][1][i]
         simx += data[sim][1]
-        simy += data[sim][2]
+        for i in range(len(args.columny)):
+          simy[i] = data[sim][2][i]
+
+      # print sim values to screen
+      for i in range(len(simx)):
+        try:
+          line = "%f" % simx[i]
+          for j in range(len(args.columny)):
+            line += "\t%e" % simy[j][i]
+          print(line)
+        except:
+          break
 
       # plot all simulation data
-      plt.plot(simx,simy)
+      for i in range(len(args.columny)):
+        plt.plot(simx,simy[i],label=simly[i].replace("_","\_"))
       plt.xlabel(simlx.replace("_","\_"))
-      plt.ylabel(simly.replace("_","\_"))
-      plt.savefig("plotter_"+str(args.columnx)+"_"+str(args.columny)+"."+args.output_format, bbox_inches="tight")
+      plt.legend(frameon=False)
+      fname = "plotter_"+str(args.columnx)
+      for c in args.columny:
+        fname += "_"+str(c)      
+      plt.savefig(fname+"."+args.output_format, bbox_inches="tight")
 
