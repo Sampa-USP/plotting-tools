@@ -59,7 +59,10 @@ def parse_log(file, colx, coly, multdt):
           heady.append(headers.split()[h-1])
       except:
         # these header are not available
-        print("Columns %d and %d are not valid for simulation %d" % (colx,coly,sim))
+        string = ""
+        for val in coly:
+          string += "%d " % val
+        print("Columns %d and %s are not valid for simulation %d" % (colx,string,sim))
         sim += 1
         continue
       xaxis = []
